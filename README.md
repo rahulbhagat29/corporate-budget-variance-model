@@ -71,5 +71,3 @@ Synthetic dataset constructed to reflect mid-market Indian manufacturing P&L str
 ---
 
 *Part of Rahul Bhagat's Data Analytics Portfolio | [github.com/rahulbhagat29](https://github.com/rahulbhagat29)*
-
-Dashobard Link | https://cap.so/s/4pg4sqgnb12yk18
