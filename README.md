@@ -131,7 +131,7 @@ Corporate_Variance_Model.xlsx
 └── Dashboard           📊 KPI tiles, charts, RAG summary, actions
 ```
 
-📥 [Corporate_Variance_Model.xlsx]
+📥 [**Corporate_Variance_Model.xlsx**](Corporate_Variance_Model.xlsx)
 
 ---
 
