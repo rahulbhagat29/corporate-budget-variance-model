@@ -1,119 +1,152 @@
-# Corporate Budget Variance Analysis and Stress Test Model
+# 🏭 Corporate Budget Variance & Stress Test — How Much Pain Can the P&L Take?
 
-> **Data provenance:** this project uses a simulated dataset. All figures are outcomes of the analysis, not client results.
+![Excel](https://img.shields.io/badge/Excel-Advanced-217346?logo=microsoftexcel&logoColor=white)
+![Formulas](https://img.shields.io/badge/Formulas-2%2C266-0B6E4F)
+![Stress grid](https://img.shields.io/badge/Stress%20grid-30%20scenarios-C62828)
+![Data](https://img.shields.io/badge/Data-simulated%20manufacturer-2E7D32)
 
-**Tool:** Microsoft Excel (Advanced) | **Domain:** Finance | **Type:** Financial Modelling
+> **⚡ 30-second version**
+> - 🎯 **Question:** which lines are driving budget deviation, and how much shock can the P&L absorb before it breaks?
+> - 📉 **FY24:** actual Net P&L **₹662L** against a **₹765L** budget.
+> - 🔴 **Two culprits:** Product B ran ~13% below budget (worsening every quarter), and Operations costs ran ~7% over (accelerating).
+> - 🟢 **One bright spot:** Services is the only line consistently beating budget.
+> - 🧪 **Stress test:** a severe shock (−12% revenue, +8% cost) cuts Net P&L by **64%** to ₹276L. Even the worst of 30 tested scenarios stays positive at **₹114L**.
 
----
-
-## Business Question
-
-Which cost centres and revenue lines are driving the largest budget deviations, what is the financial impact under stress, and what corrective action should management take?
-
----
-
-## Decision
-
-Product B requires an immediate product review — FY24 actuals ran ~13% below budget on average, worsening each quarter. Operations cost inflation (+7% avg FY24) is accelerating and requires a procurement audit before FY25 budgeting. Services is the one segment consistently outperforming budget and warrants increased allocation.
-
-Under severe stress (−12% revenue, +8% cost overrun), Net P&L drops from ₹765 L to ₹276 L — a 64% erosion. The business retains profitability across the entire modelled sensitivity grid: the worst modelled case (−15% revenue / +12% cost) still returns ₹114 L. Simultaneous shocks beyond the tested range would be required to push the company into loss territory.
+> **Data provenance:** simulated dataset. All figures are outcomes of the analysis, not client results.
 
 ---
 
-## Problem
+## 🗺️ How the model flows
 
-The business had no structured framework to isolate which line items were driving budget deviation, quantify cumulative impact over 24 months, or model the P&L impact of demand and cost shocks before they materialised. Management decisions on budget reallocation were being made without a scenario-tested view of downside risk.
-
-Raw extracts arrived from multiple source systems (SAP dumps, legacy Excel, manual uploads, CSV imports) in inconsistent formats, making even basic variance analysis unreliable without heavy cleaning.
-
----
-
-## Data Cleaning & Preparation
-
-The starting point was a 200+ row raw extract (`Raw_Export`) containing every classic real-world data-quality problem:
-
-| Issue | Examples encountered |
-|-------|----------------------|
-| Inconsistent date formats | `Jan-23`, `February 2024`, `2024-01`, `Mar/24`, `3/1/2024`, `SEP-22` |
-| Broken FY / Quarter labels | `FY24`, `23`, `Financial Year 24`, `N/A`, blank, `q4`, `Quarter 2`, `Qtr 3`, `2` |
-| Category spelling chaos | `Cost` / `Costs` / `Cst` / `Exp` / `Expense` / `Expenses` / `Revnue` / `Rev` / `Income` / `Sales Revenue` |
-| Line-item name variants | `Product A` / `product a` / `Prod. A` / `A Product`; `Marketting` / `Markting` / `Mkt` / `Brand`; `HR` / `People` / `Human Resources`; `Operations` / `Manufacturing` / `Ops`; multiple Finance & Admin spellings |
-| Mixed units & formats | Pure numbers, `Rs. 78.75`, `21.56 lakhs`, scientific notation (`1.1250e+02`), European decimals (`43,2`), full-rupee figures (`6160000`), blanks, `TBD`, negatives |
-| Structural noise | Duplicate rows, grand-total / balance-check rows, flagged “verify this / old value / reconcile / duplicate?” notes |
-
-**Cleaning steps applied:**
-
-1. **Standardised temporal fields** — Parsed every date variant into a consistent `Mon-YY` month label, mapped all fiscal-year strings to `FY23` / `FY24`, and normalised quarters to `Q1`–`Q4`.
-2. **Canonical category mapping** — Collapsed every revenue/cost spelling variant into exactly two values: `Revenue` or `Cost`.
-3. **Canonical line-item mapping** — Reduced ~30 name variants to the eight business lines used throughout the model:  
-   `Product A`, `Product B`, `Services`, `Operations`, `Sales`, `Marketing`, `HR`, `Finance & Admin`.
-4. **Unit harmonisation** — Converted every amount into ₹ Lakhs (divided by 1,00,000 where full-rupee values appeared, stripped currency symbols and text suffixes, fixed scientific notation and European commas, treated blanks/TBD as missing).
-5. **Deduplication & row validation** — Removed exact and near-duplicate rows, dropped non-line-item rows (grand totals, balance checks), and enforced one row per Month × Line Item combination.
-6. **Assumption preservation** — Kept the original free-text assumption notes against every surviving row so auditability was not lost.
-
-**Result:** A 191-row cleaned panel stored in `Raw_Export_Clean` / `Raw_Export_Cleaned`. All downstream sheets (`Variance Engine`, `Scenario Analysis`, `Dashboard`) reference only the cleaned data via formulas — no hardcoded numbers in calculation cells; stress assumptions sit in marked yellow input cells.
+```mermaid
+flowchart LR
+    A[📥 Raw_Export<br/>200+ messy rows<br/>SAP · legacy Excel · CSV · manual] --> B[🧹 6-step cleaning]
+    B --> C[✅ 191 clean rows<br/>8 lines × 24 months]
+    C --> D[⚖️ Variance Engine<br/>abs · % · YTD · RAG]
+    C --> E[🧪 Scenario Analysis<br/>3 scenarios + 6×5 grid]
+    D --> F[📊 Dashboard]
+    E --> F
+```
 
 ---
 
-## What I Did
+## 🧹 The mess I started with
 
-**Dataset:** Constructed a simulated panel loosely modelled on a mid-market Indian manufacturing P&L structure (FY2023–FY2024). Design target was 192 rows (8 line items × 24 months); the cleaned sheet holds 191 — one month/line-item combination (HR, Jul-22) is absent. Eight line items across five cost centres and three revenue lines. Monthly budget and actual figures with documented assumption notes for every input.
+Raw extracts from four kinds of source (SAP dumps, legacy Excel, manual uploads, CSV imports), and none of them agreed:
 
-**Variance Engine:** Built a formula-driven variance engine with absolute variance, percentage variance, YTD cumulative variance, and RAG status (Green / Amber / Red) across all rows. RAG logic differentiates correctly between revenue lines (adverse = below budget) and cost lines (adverse = above budget).
+| | Problem | Real examples from the raw sheet |
+|---|---|---|
+| 📅 | Inconsistent dates | `Jan-23`, `February 2024`, `2024-01`, `Mar/24`, `3/1/2024`, `SEP-22` |
+| 🗓️ | Broken FY / quarter labels | `FY24`, `23`, `Financial Year 24`, `N/A`, blank, `q4`, `Quarter 2`, `Qtr 3`, `2` |
+| 🔤 | Category spelling chaos | `Cost` / `Costs` / `Cst` / `Exp` / `Expenses` / `Revnue` / `Rev` / `Income` / `Sales Revenue` |
+| 🏷️ | Line-item name variants | `Product A` / `product a` / `Prod. A` / `A Product`; `Marketting` / `Mkt` / `Brand`; `HR` / `People` / `Human Resources` |
+| 💱 | Mixed units and formats | `Rs. 78.75`, `21.56 lakhs`, `1.1250e+02`, `43,2`, `6160000`, `TBD`, blanks, negatives |
+| 🗑️ | Structural noise | Duplicate rows, grand-total and balance-check rows, "verify this / old value / reconcile / duplicate?" notes |
 
-**Scenario and Sensitivity Analysis:** Two-input scenario model with live yellow input cells for Revenue Stress % and Cost Overrun %. All downstream stressed P&L figures update dynamically. Three named scenarios — Base, Moderate Stress (−5% rev, +3% cost), Severe Stress (−12% rev, +8% cost) — compared side by side. A 6×5 sensitivity table covering 30 combinations maps every revenue-cost stress intersection to a Net P&L outcome.
+## 🧼 How I cleaned it
 
-**Executive Dashboard:** Four KPI tiles, budget-vs-actual visualisation by line item, monthly trend context, RAG summary with management action signals, and a key-finding statement translating the analysis into CFO-level decisions.
+1. 📅 **Dates:** every variant parsed to one `Mon-YY` label; fiscal years mapped to `FY23` / `FY24`; quarters normalised to `Q1`–`Q4`.
+2. 🔤 **Categories:** every spelling collapsed to exactly two values, `Revenue` or `Cost`.
+3. 🏷️ **Line items:** ~30 name variants reduced to 8 business lines: `Product A`, `Product B`, `Services`, `Operations`, `Sales`, `Marketing`, `HR`, `Finance & Admin`.
+4. 💱 **Units:** everything converted to ₹ Lakhs. Currency text stripped, scientific notation and European decimals fixed, blanks and `TBD` treated as missing.
+5. 👯 **Duplicates and junk rows:** exact and near-duplicates removed, total and check rows dropped, one row per Month × Line Item enforced.
+6. 📝 **Audit trail:** the original assumption notes kept against every surviving row.
 
-**Excel skills demonstrated:** SUMPRODUCT with multi-condition arrays, cross-sheet formula linking, dynamic scenario inputs with downstream propagation, conditional RAG logic, financial chart construction, colour-coded financial modelling conventions (blue inputs, black formulas, green cross-sheet links).
-
----
-
-## Key Findings
-
-| Metric | Value |
-|---|---|
-| FY24 Budgeted Net P&L | ₹765 L |
-| FY24 Actual Net P&L | ₹662 L |
-| Product B FY24 Variance | −13% avg (worsening each quarter) |
-| Operations FY24 Cost Overrun | +7% avg (accelerating in FY24) |
-| Moderate Stress Net P&L (−5% rev / +3% cost) | ₹568 L (−26% vs budget) |
-| Severe Stress Net P&L (−12% rev / +8% cost) | ₹276 L (−64% vs budget) |
-| Lowest modelled Net P&L (−15% rev / +12% cost) | ₹114 L (still positive) |
-
-Product B underperformance and Operations cost inflation together explain the large majority of the adverse variance. Services remains the only consistently outperforming revenue line.
+**Result:** 191 clean rows. The design target was 192 (8 lines × 24 months); the one missing combination is **HR, Jul-22**.
 
 ---
 
-## Limitations
+## ⚙️ What I built
 
-- The dataset is simulated. No real company's books were used — findings are method demonstrations, not audited results.
-- The sensitivity grid tests revenue and cost shocks as uniform percentages across all line items. A real shock would hit line items unevenly; the model does not weight by elasticity.
-- Only two stress variables are modelled. Working capital, interest cost, tax and FX are held constant.
-- The model is annual-and-monthly, not cash-flow. A profitable stressed P&L does not prove the business could fund the period.
-- The cleaned panel holds 191 of an intended 192 month/line-item rows; the missing combination is HR, Jul-22, so FY23 carries 95 rows against FY24's 96.
-- The variance engine flags deviation; it does not attribute cause. Root cause for Product B and Operations would need volume, price and mix decomposition that the source data does not carry.
+| | Component | What it does |
+|---|---|---|
+| ⚖️ | **Variance Engine** | Absolute, % and YTD cumulative variance with RAG status on every row. Adverse means *below* budget for revenue and *above* budget for cost. |
+| 🎛️ | **Scenario model** | Two live input cells (Revenue Stress %, Cost Overrun %) drive every stressed P&L figure downstream |
+| 🧪 | **Named scenarios** | Base, Moderate (−5% / +3%) and Severe (−12% / +8%), side by side |
+| 🗺️ | **Sensitivity grid** | 6 × 5 = 30 revenue-cost combinations, each mapped to a Net P&L outcome |
+| 📊 | **Dashboard** | Four KPI tiles, budget vs actual by line, monthly trend, RAG summary with management actions |
+
+Every downstream sheet reads only from the cleaned data. There are no hardcoded numbers in calculation cells; stress assumptions sit in marked yellow input cells.
 
 ---
 
-## File Structure
+## 🔍 What the model says
+
+### 1️⃣ 📉 Where FY24 went off budget
+
+| Line | FY24 vs budget | Signal |
+|---|---|---|
+| Product B | ~13% below on average, worsening each quarter | 🔴 |
+| Operations (cost) | ~7% above on average, accelerating | 🔴 |
+| Services | Consistently above budget | 🟢 |
+| **Net P&L** | **₹662L actual vs ₹765L budget** | 🔴 |
+
+Product B and Operations together explain most of the adverse variance.
+
+### 2️⃣ 🧪 How much stress can the P&L take?
+
+```
+Net P&L under stress (₹ Lakhs)
+Budget             ████████████████████  765
+Moderate  −5%/+3%  ███████████████       568   (−26%)
+Severe   −12%/+8%  ███████               276   (−64%)
+Worst   −15%/+12%  ███                   114   (still positive)
+```
+
+The business stays profitable across all 30 tested combinations. Pushing it into loss would take shocks beyond the tested range.
+
+<!-- Add a dashboard screenshot here:
+![Dashboard](images/dashboard.png)
+-->
+
+---
+
+## 🧭 The decision
+
+| | Action | Why |
+|---|---|---|
+| 🔍 | **Review Product B now** | Under budget every quarter, and getting worse |
+| 🧾 | **Audit Operations procurement before FY25 budgeting** | Cost inflation is accelerating, not stabilising |
+| 📈 | **Shift allocation toward Services** | The only line consistently beating budget |
+
+---
+
+## 🧠 Excel techniques used
+
+- 🔢 `SUMPRODUCT` with multi-condition arrays
+- 🔗 Cross-sheet formula linking across all six sheets
+- 🎛️ Dynamic scenario inputs flowing through to every stressed figure
+- 🚦 Conditional RAG logic that treats revenue and cost lines differently
+- 🎨 Modelling colour conventions: blue inputs, black formulas, green cross-sheet links
+
+## 📁 Workbook map
 
 ```
 Corporate_Variance_Model.xlsx
-├── Raw_Export              → Original messy multi-source extract (unprocessed)
-├── Raw_Export_Clean        → Intermediate cleaned panel
-├── Raw_Export_Cleaned      → Final 191-row clean dataset (Month × Line Item)
-├── Variance Engine         → Formula-driven abs/%/YTD variance + RAG status
-├── Scenario Analysis       → Live stress inputs, named scenarios, 6×5 sensitivity table
-└── Dashboard               → KPI tiles, charts, RAG summary, management actions
+├── Raw_Export          📥 original messy multi-source extract (untouched)
+├── Raw_Export_Clean    🧹 intermediate cleaned panel
+├── Raw_Export_Cleaned  ✅ final 191-row dataset (Month × Line Item)
+├── Variance Engine     ⚖️ abs / % / YTD variance + RAG status
+├── Scenario Analysis   🧪 live stress inputs, named scenarios, 6×5 grid
+└── Dashboard           📊 KPI tiles, charts, RAG summary, actions
 ```
 
----
-
-## Dataset Note
-
-Simulated dataset constructed to reflect a typical mid-market Indian manufacturing P&L structure. All assumption notes documented inline. The raw extract deliberately retains the messiness typical of real multi-system extracts so the cleaning process itself is visible and reproducible.
+📥 [**Download the workbook**](Corporate_Variance_Model.xlsx)
 
 ---
 
-*Part of Rahul Bhagat's Data Analytics Portfolio | [github.com/rahulbhagat29](https://github.com/rahulbhagat29)*
+<details>
+<summary>🚧 <b>Limitations</b> (click to expand)</summary>
+
+- **Simulated data:** no real company's books were used. Findings demonstrate the method; they are not audited results.
+- **Uniform shocks:** each stress applies the same % to every line. Real shocks hit lines unevenly; the model doesn't weight by elasticity.
+- **Two stress levers only:** working capital, interest, tax and FX are held constant.
+- **P&L, not cash flow:** a profitable stressed P&L doesn't prove the business could fund the period.
+- **One missing row:** HR, Jul-22 is absent, so FY23 holds 95 rows against FY24's 96.
+- **Flags, not causes:** the engine shows where variance sits, not why. Explaining Product B and Operations needs price / volume / mix data the source doesn't carry.
+
+</details>
+
+---
+
+*Part of Rahul Bhagat's Data Analytics Portfolio · [🌐 Portfolio](https://rahulbhagat29.github.io/) · [💼 LinkedIn](https://www.linkedin.com/in/rahulbhagat29) · [🐙 GitHub](https://github.com/rahulbhagat29)*
