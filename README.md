@@ -1,5 +1,7 @@
 # Corporate Budget Variance Analysis and Stress Test Model
 
+> **Data provenance:** this project uses a simulated dataset. All figures are outcomes of the analysis, not client results.
+
 **Tool:** Microsoft Excel (Advanced) | **Domain:** Finance | **Type:** Financial Modelling
 
 ---
@@ -14,7 +16,7 @@ Which cost centres and revenue lines are driving the largest budget deviations, 
 
 Product B requires an immediate product review — FY24 actuals ran ~13% below budget on average, worsening each quarter. Operations cost inflation (+7% avg FY24) is accelerating and requires a procurement audit before FY25 budgeting. Services is the one segment consistently outperforming budget and warrants increased allocation.
 
-Under severe stress (−12% revenue, +8% cost overrun), Net P&L drops from ₹765 L to ₹276 L — a 64% erosion. The business retains profitability across the entire modelled sensitivity grid (down to −15% revenue / +12% cost). Simultaneous shocks beyond the tested range would be required to push the company into loss territory.
+Under severe stress (−12% revenue, +8% cost overrun), Net P&L drops from ₹765 L to ₹276 L — a 64% erosion. The business retains profitability across the entire modelled sensitivity grid: the worst modelled case (−15% revenue / +12% cost) still returns ₹114 L. Simultaneous shocks beyond the tested range would be required to push the company into loss territory.
 
 ---
 
@@ -49,15 +51,15 @@ The starting point was a 200+ row raw extract (`Raw_Export`) containing every cl
 5. **Deduplication & row validation** — Removed exact and near-duplicate rows, dropped non-line-item rows (grand totals, balance checks), and enforced one row per Month × Line Item combination.
 6. **Assumption preservation** — Kept the original free-text assumption notes against every surviving row so auditability was not lost.
 
-**Result:** A clean 192-row panel (8 line items × 24 months) stored in `Raw_Export_Clean` / `Raw_Export_Cleaned`. All downstream sheets (`Variance Engine`, `Scenario Analysis`, `Dashboard`) reference only the cleaned data via formulas — zero hardcoded values.
+**Result:** A 191-row cleaned panel stored in `Raw_Export_Clean` / `Raw_Export_Cleaned`. All downstream sheets (`Variance Engine`, `Scenario Analysis`, `Dashboard`) reference only the cleaned data via formulas — no hardcoded numbers in calculation cells; stress assumptions sit in marked yellow input cells.
 
 ---
 
 ## What I Did
 
-**Dataset:** Constructed a 192-row synthetic dataset modelled on mid-market Indian manufacturing benchmarks (FY2023–FY2024). Eight line items across five cost centres and three revenue lines. Monthly budget and actual figures with documented assumption notes for every input.
+**Dataset:** Constructed a simulated panel loosely modelled on a mid-market Indian manufacturing P&L structure (FY2023–FY2024). Design target was 192 rows (8 line items × 24 months); the cleaned sheet holds 191 — one month/line-item combination (HR, Jul-22) is absent. Eight line items across five cost centres and three revenue lines. Monthly budget and actual figures with documented assumption notes for every input.
 
-**Variance Engine:** Built a formula-driven variance engine with absolute variance, percentage variance, YTD cumulative variance, and RAG status (Green / Amber / Red) across all 192 rows. RAG logic differentiates correctly between revenue lines (adverse = below budget) and cost lines (adverse = above budget).
+**Variance Engine:** Built a formula-driven variance engine with absolute variance, percentage variance, YTD cumulative variance, and RAG status (Green / Amber / Red) across all rows. RAG logic differentiates correctly between revenue lines (adverse = below budget) and cost lines (adverse = above budget).
 
 **Scenario and Sensitivity Analysis:** Two-input scenario model with live yellow input cells for Revenue Stress % and Cost Overrun %. All downstream stressed P&L figures update dynamically. Three named scenarios — Base, Moderate Stress (−5% rev, +3% cost), Severe Stress (−12% rev, +8% cost) — compared side by side. A 6×5 sensitivity table covering 30 combinations maps every revenue-cost stress intersection to a Net P&L outcome.
 
@@ -83,13 +85,24 @@ Product B underperformance and Operations cost inflation together explain the la
 
 ---
 
+## Limitations
+
+- The dataset is simulated. No real company's books were used — findings are method demonstrations, not audited results.
+- The sensitivity grid tests revenue and cost shocks as uniform percentages across all line items. A real shock would hit line items unevenly; the model does not weight by elasticity.
+- Only two stress variables are modelled. Working capital, interest cost, tax and FX are held constant.
+- The model is annual-and-monthly, not cash-flow. A profitable stressed P&L does not prove the business could fund the period.
+- The cleaned panel holds 191 of an intended 192 month/line-item rows; the missing combination is HR, Jul-22, so FY23 carries 95 rows against FY24's 96.
+- The variance engine flags deviation; it does not attribute cause. Root cause for Product B and Operations would need volume, price and mix decomposition that the source data does not carry.
+
+---
+
 ## File Structure
 
 ```
 Corporate_Variance_Model.xlsx
 ├── Raw_Export              → Original messy multi-source extract (unprocessed)
 ├── Raw_Export_Clean        → Intermediate cleaned panel
-├── Raw_Export_Cleaned      → Final 192-row clean dataset (Month × Line Item)
+├── Raw_Export_Cleaned      → Final 191-row clean dataset (Month × Line Item)
 ├── Variance Engine         → Formula-driven abs/%/YTD variance + RAG status
 ├── Scenario Analysis       → Live stress inputs, named scenarios, 6×5 sensitivity table
 └── Dashboard               → KPI tiles, charts, RAG summary, management actions
@@ -99,7 +112,7 @@ Corporate_Variance_Model.xlsx
 
 ## Dataset Note
 
-Synthetic dataset constructed to reflect mid-market Indian manufacturing P&L structure. Revenue and cost ratios benchmarked against publicly available Indian corporate annual reports. All assumption notes documented inline. Dataset is interview-defensible line by line. The raw extract deliberately retains the messiness typical of real multi-system extracts so the cleaning process itself is visible and reproducible.
+Simulated dataset constructed to reflect a typical mid-market Indian manufacturing P&L structure. All assumption notes documented inline. The raw extract deliberately retains the messiness typical of real multi-system extracts so the cleaning process itself is visible and reproducible.
 
 ---
 
